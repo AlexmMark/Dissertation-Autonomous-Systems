@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Interactive mBot</title>
+        <link href="bootstrap.min.css" rel="stylesheet">
+        <link href="bootstrap-slider.css" rel="stylesheet">
+        <style type='text/css'>
+            #canvasPos {
+                width: 930px;
+                margin: auto;
+                margin-top: 50px;
+                border: 1px solid darkseagreen;
+                border-radius: 10px;
+            }
+            #block {
+                display: inline-block;
+                width: 20px;
+                height: 180px;
+                background-color: darkcyan;
+            }
+            #showdist {
+                text-align: center;
+                font-size: 20px;
+            }
+            #mo .slider-selection {
+                background: #BABABA;
+            }
+            .sliderBlock {
+                margin: auto;
+                margin-bottom: 10px;
+                width: 310px;
+            }
+            .sliderBlock > p {
+                font-size: 18px;
+            }
+            #motor {
+                width: 300px;
+                margin: auto;
+            }
+            .speed {
+                background-color: cadetblue;
+                margin: auto;
+                width: 500px;
+                margin-top: 40px;
+                margin-bottom: 50px;
+                padding-top: 10px;
+                padding-bottom: 10px;
+                border-radius: 10px;
+            }           
+            h1 {
+                text-align: center;
+                font-size: 22px;
+            }
+            #showspeed p {
+                display: inline-block;
+                margin-left: -8px;
+            }
+            #maxspeed {
+                float: right;
+                margin-right: 90px;
+            }
+        </style>   
+    </head>
+    <body>
+        <div id="canvasPos">
+            <div id='block'></div>
+            <canvas id="demoCanvas" width="900" height="200"></canvas>
+            <p id="showdist">Distance: <span id='showdata'></span> cm</p>
+        </div>
+        <div class="speed">
+            <h1>Motor</h1>
+            <div class='sliderBlock'>
+                <p>Speed: <span id='showspeed'>100</span></p> 
+                <input type="text" class="span2" value="" data-slider-min="50" data-slider-max="230" data-slider-step="10" data-slider-value="100" data-slider-id="mo" id="motor" data-slider-tooltip="hide" data-slider-handle="round" />
+                <div id='showspeed'>
+                    <p>50</p>
+                    <p id='maxspeed'>230</p>
+                </div> 
+            </div>
+        </div>
+        <script src="/socket.io/socket.io.js"></script>
+        <script type='text/javascript' src="jquery.min.js"></script>
+        <script type='text/javascript' src="bootstrap-slider.js"></script>
+        <script src="createjs-2015.05.21.min.js"></script>
+        <script type='text/javascript'>
+            
+            // create a red ball on the canvas        
+            var stage = new createjs.Stage("demoCanvas");
+            var circle = new createjs.Shape();
+            circle.graphics.beginFill("Crimson").drawCircle(0, 0, 50);
+            circle.x = 100;
+            circle.y = 100;
+            stage.addChild(circle);        
+            
+            var soundID = ["GU-StealDaisy", "ToneWobble", "Game-Spawn", "Humm"];
+            
+            // load sounds
+            for(var i=0; i<soundID.length; i++) {
+                createjs.Sound.registerSound("assets/" + soundID[i] + ".mp3", soundID[i]);
+                console.log("test" + soundID[i]);
+            }              
+                       
+            function playSound (i) {
+                var te = createjs.Sound.play(soundID[i]);
+                console.log(te);
+            }
+            
+            var socket = io.connect();
+            
+            socket.on('connect', function() {
+                
+                // play sound after the sound file loaded
+                setTimeout(function() {
+                    socket.on('sonar', function(data) {
+                        var dist = data.distance;
+                        $('#showdata').text(dist);
+                        var j;
+                        // play different sounds based on the distance data from sonar sensor
+                        if(dist < 32) {
+                            if(dist < 8) {
+                                j = 0;
+                            }
+                            else if(dist < 16 && dist >= 8) {
+                                j = 1;
+                            }
+                            else if(dist < 24 && dist >= 16) {
+                                j = 2;
+                            }
+                            else {
+                                j = 3;
+                            }
+                            console.log(j);
+                            playSound(j);
+                        }
+                        
+                        // move the red ball based on the distance data from sonar sensor
+                        var bdist = 25 +Math.floor(dist * 10);
+                        if(bdist < 860) {
+                            createjs.Tween.get(circle, {loop: false})
+                                .to({x: bdist}, 10, createjs.Ease.getPowInOut(4));
+                            createjs.Ticker.setFPS(60);
+                            createjs.Ticker.addEventListener("tick", stage);                     
+                         }                       
+                    });                   
+                }, 100);               
+                
+                // call speedChange function when the value of motor speed changes
+                var speedChange = function() {
+                    console.log(bu.getValue());
+                    socket.emit('motor', { speed: bu.getValue() });
+                    $('#showspeed').text(bu.getValue());
+                }
+
+                var bu = $('#motor').slider()
+                    .on('slide', speedChange)
+                    .data('slider');
+            });
+        </script>
+    </body>
+</html>
