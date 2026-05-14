@@ -1,0 +1,8 @@
+namespace example;
+
+class Moving{
+Action{
+  going{obstacle -> / {turn();} turning;}
+  turning{clear -> /{go();} going;}
+}
+}
